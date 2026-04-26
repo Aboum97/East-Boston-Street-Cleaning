@@ -30,7 +30,8 @@
 - Filterable by day of week (Mon–Sun) — defaults to today
 - Odd/even side color coding on every street card
 - Cleaning time window, intersection segment (from → to), and week frequency per street
-- Data fetched live from Boston's open data portal — always up to date
+- Data pre-filtered to East Boston and cached locally — updated daily via GitHub Actions
+- Instant page loads (no API calls, no CORS issues)
 - Daily email with 3-day lookahead, sent to Gmail via App Password
 - Seasonal awareness: no alerts November 30 – April 1 when the program is inactive
 
@@ -39,21 +40,20 @@
 ## How it works
 
 ```
-Boston Open Data (CKAN API)
-        │
-        ▼
- resource_show endpoint
- returns current CSV URL
-        │
-        ▼
-   CSV download (~600KB)
-   parsed in browser / Python
-        │
-    ┌───┴────────────────────┐
-    ▼                        ▼
-index.html               alert.py
-(GitHub Pages)        (GitHub Actions)
-Live website          Daily 7am email
+     Boston Open Data (CKAN API)
+               │
+               ▼
+      update_data.py (8am UTC daily)
+      ├─ fetches CSV (~600KB)
+      ├─ filters to East Boston
+      └─ saves data/east-boston.json
+               │
+               ├─────────────────────┐
+               ▼                     ▼
+          index.html             alert.py
+        (GitHub Pages)      (11am UTC daily)
+     Reads local JSON      Reads local JSON
+       Live website         Email next 3 days
 ```
 
 The schedule CSV has a row per street segment per side. Each row has boolean columns for which days of the week (`monday`, `tuesday`, ...) and which weeks of the month (`week_1` through `week_5`) cleaning occurs. A street is scheduled on a given date if its day column and week-of-month column are both `t`.
@@ -65,12 +65,17 @@ The schedule CSV has a row per street segment per side. Each row has boolean col
 ```
 East-Boston-Street-Cleaning/
 ├── index.html                        # Website (GitHub Pages)
+├── data/
+│   └── east-boston.json              # Pre-filtered East Boston data (updated daily)
+├── scripts/
+│   └── update_data.py                # Data fetcher (filters CSV → JSON)
 ├── alert/
 │   ├── alert.py                      # Email alert script
 │   └── requirements.txt              # Python dependencies
 ├── .github/
 │   └── workflows/
-│       └── daily_alert.yml           # GitHub Actions cron job
+│       ├── update_data.yml           # Data update job (8am UTC daily)
+│       └── daily_alert.yml           # Email alert job (11am UTC daily)
 ├── .gitignore
 └── README.md
 ```

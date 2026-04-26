@@ -6,7 +6,6 @@
   <title>East Boston Street Cleaning</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -317,10 +316,10 @@
 
 <script>
 // ── Constants ──────────────────────────────────────────────────────────────
-const RESOURCE_ID = '9fdbdcad-67c8-4b23-b6ec-861e77d56227';
-const CKAN_URL    = `https://data.boston.gov/api/3/action/resource_show?id=${RESOURCE_ID}`;
+// Data is pre-baked daily by GitHub Actions → no CORS issues, instant loads
+const DATA_URL   = './data/east-boston.json';
 
-const DAYS     = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+const DAYS       = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
 const DAY_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS_ACTIVE = [4,5,6,7,8,9,10,11]; // April (4) – November (11)
 
@@ -471,27 +470,16 @@ function render() {
 // ── Data fetching ─────────────────────────────────────────────────────────
 async function loadData() {
   try {
-    // Step 1: get current CSV URL from CKAN
-    const metaRes = await fetch(CKAN_URL);
-    const meta    = await metaRes.json();
-    if (!meta.success) throw new Error('CKAN API error');
+    // Data is pre-baked by GitHub Actions daily into data/east-boston.json
+    const res  = await fetch(DATA_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status} — data file not found. Run the GitHub Action first.`);
+    const json = await res.json();
 
-    const csvUrl      = meta.result.url;
-    const lastUpdated = meta.result.last_modified?.slice(0, 10) || '—';
-    document.getElementById('last-updated').textContent = `Updated ${lastUpdated}`;
+    allStreets = json.streets || [];
+    if (allStreets.length === 0) throw new Error('No streets found in data file');
 
-    // Step 2: fetch and parse CSV
-    const csvRes  = await fetch(csvUrl);
-    const csvText = await csvRes.text();
-
-    const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-
-    // Step 3: filter to East Boston
-    allStreets = parsed.data.filter(r =>
-      r.dist_name && r.dist_name.trim().toLowerCase() === 'east boston'
-    );
-
-    if (allStreets.length === 0) throw new Error('No East Boston rows found');
+    const updated = json.updated || '—';
+    document.getElementById('last-updated').textContent = `Updated ${updated}`;
 
     render();
 
@@ -501,7 +489,7 @@ async function loadData() {
         <div class="big">⚠️</div>
         Could not load schedule data.<br>
         <small>${err.message}</small><br><br>
-        <small>Check the browser console or try refreshing.</small>
+        <small>Make sure the <code>update_data</code> GitHub Action has run at least once.</small>
       </div>`;
     console.error(err);
   }
