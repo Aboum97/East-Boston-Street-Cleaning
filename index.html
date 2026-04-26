@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>East Boston Street Cleaning</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:   #1B2A4A;
+      --navy-l: #243660;
+      --odd:    #E8782A;
+      --odd-l:  #FDF0E6;
+      --even:   #1A8C68;
+      --even-l: #E3F5EF;
+      --bg:     #F4F3EE;
+      --card:   #FFFFFF;
+      --border: #E0DED6;
+      --text:   #1A1A1A;
+      --muted:  #6B6860;
+      --accent: #D44C2B;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--navy);
+      color: #fff;
+      padding: 0 1.5rem;
+    }
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.25rem 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .header-title h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    .header-title p {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.55);
+      margin-top: 3px;
+      font-family: 'DM Mono', monospace;
+    }
+    .season-badge {
+      font-size: 0.72rem;
+      font-family: 'DM Mono', monospace;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-weight: 500;
+      margin-top: 6px;
+      display: inline-block;
+    }
+    .season-active  { background: #1A8C68; color: #fff; }
+    .season-inactive { background: #6B6860; color: #fff; }
+
+    /* ── Filters ── */
+    .filters-wrap {
+      background: var(--navy-l);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 0 1.5rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .filters-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0.75rem 0;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .filter-group { display: flex; gap: 4px; }
+    .filter-label {
+      font-size: 0.7rem;
+      font-family: 'DM Mono', monospace;
+      color: rgba(255,255,255,0.4);
+      align-self: center;
+      margin-right: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .day-btn, .side-btn {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      padding: 5px 11px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: transparent;
+      color: rgba(255,255,255,0.65);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .day-btn:hover, .side-btn:hover {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+    }
+    .day-btn.active {
+      background: #fff;
+      color: var(--navy);
+      border-color: #fff;
+      font-weight: 500;
+    }
+    .day-btn.today-btn {
+      border-color: var(--accent);
+      color: #ffb89a;
+    }
+    .day-btn.today-btn.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .side-btn.active-odd  { background: var(--odd);   color: #fff; border-color: var(--odd); }
+    .side-btn.active-even { background: var(--even);  color: #fff; border-color: var(--even); }
+    .side-btn.active-all  { background: rgba(255,255,255,0.2); color: #fff; }
+
+    /* ── Main ── */
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.5rem 1.5rem 3rem;
+    }
+
+    /* ── Status bar ── */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .status-count {
+      font-size: 0.82rem;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+    }
+    .status-count strong { color: var(--text); }
+    .data-source {
+      font-size: 0.7rem;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+    }
+    .data-source a { color: var(--muted); }
+
+    /* ── Loading / error ── */
+    .state-msg {
+      text-align: center;
+      padding: 4rem 1rem;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+    }
+    .state-msg .big { font-size: 2rem; margin-bottom: 0.75rem; }
+
+    /* ── Street grid ── */
+    .street-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 10px;
+    }
+
+    /* ── Street card ── */
+    .street-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      border-left: 4px solid var(--border);
+      transition: box-shadow 0.15s;
+    }
+    .street-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .street-card.odd-side  { border-left-color: var(--odd); }
+    .street-card.even-side { border-left-color: var(--even); }
+    .street-card.both-side { border-left-color: var(--navy); }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .street-name {
+      font-family: 'DM Mono', monospace;
+      font-weight: 500;
+      font-size: 0.92rem;
+      color: var(--text);
+      line-height: 1.3;
+    }
+    .side-pill {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 20px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .pill-odd  { background: var(--odd-l);  color: #A0521A; }
+    .pill-even { background: var(--even-l); color: #0F6E52; }
+    .pill-both { background: #EEF0F5;       color: var(--navy); }
+
+    .card-detail {
+      font-size: 0.75rem;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .detail-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .detail-icon { font-size: 0.75rem; opacity: 0.6; width: 14px; }
+    .detail-text { font-family: 'DM Mono', monospace; }
+    .freq-chip {
+      font-size: 0.62rem;
+      font-family: 'DM Mono', monospace;
+      padding: 1px 6px;
+      background: #F0EFE8;
+      border-radius: 4px;
+      color: var(--muted);
+      margin-top: 2px;
+      display: inline-block;
+    }
+
+    /* ── Empty state ── */
+    .empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 3rem;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.82rem;
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 1.5rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--muted); }
+
+    @media (max-width: 600px) {
+      .filters-inner { gap: 8px; }
+      .street-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-title">
+      <h1>🧹 East Boston Street Cleaning</h1>
+      <p id="today-label">Loading schedule…</p>
+    </div>
+    <span id="season-badge" class="season-badge"></span>
+  </div>
+</header>
+
+<div class="filters-wrap">
+  <div class="filters-inner">
+    <span class="filter-label">Day</span>
+    <div class="filter-group" id="day-filters"></div>
+    <span class="filter-label" style="margin-left:8px">Side</span>
+    <div class="filter-group" id="side-filters"></div>
+  </div>
+</div>
+
+<main>
+  <div class="status-bar">
+    <span class="status-count" id="status-count">—</span>
+    <span class="data-source">
+      Source: <a href="https://data.boston.gov/dataset/street-sweeping-schedules" target="_blank">City of Boston Open Data</a>
+      · <span id="last-updated">—</span>
+    </span>
+  </div>
+  <div id="content">
+    <div class="state-msg">
+      <div class="big">⏳</div>
+      Fetching schedule from Boston Open Data…
+    </div>
+  </div>
+</main>
+
+<footer>
+  Data: City of Boston Street Sweeping Schedules (PDDL License) ·
+  Program runs April 1 – November 30 ·
+  <a href="https://github.com/Aboum97/East-Boston-Street-Cleaning" target="_blank">GitHub</a>
+</footer>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────
+const RESOURCE_ID = '9fdbdcad-67c8-4b23-b6ec-861e77d56227';
+const CKAN_URL    = `https://data.boston.gov/api/3/action/resource_show?id=${RESOURCE_ID}`;
+
+const DAYS     = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+const DAY_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS_ACTIVE = [4,5,6,7,8,9,10,11]; // April (4) – November (11)
+
+// ── State ──────────────────────────────────────────────────────────────────
+let allStreets   = [];
+let selectedDay  = new Date().getDay(); // 0=Sun
+let selectedSide = 'all';
+const today      = new Date();
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function weekOfMonth(date) {
+  return Math.ceil(date.getDate() / 7);
+}
+
+function isSeasonActive(date) {
+  const m = date.getMonth() + 1; // 1-12
+  return MONTHS_ACTIVE.includes(m);
+}
+
+function formatTime(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':');
+  const hour = parseInt(h);
+  return `${hour % 12 || 12}:${m} ${hour < 12 ? 'AM' : 'PM'}`;
+}
+
+function weekDescription(row) {
+  const weeks = [1,2,3,4,5].filter(n => row[`week_${n}`] === 't').map(n => `wk ${n}`);
+  if (weeks.length === 5 || row.every_day === 't') return 'every week';
+  if (weeks.length === 0) return '';
+  return weeks.join(', ');
+}
+
+function isScheduledOnDate(row, date) {
+  const dayCol  = DAYS[date.getDay()];
+  const weekCol = `week_${weekOfMonth(date)}`;
+  if (row.every_day === 't') return true;
+  return row[dayCol] === 't' && row[weekCol] === 't';
+}
+
+// ── Build UI ──────────────────────────────────────────────────────────────
+function buildDayFilters() {
+  const container = document.getElementById('day-filters');
+  container.innerHTML = '';
+  const todayIdx = today.getDay();
+
+  DAY_LABELS.forEach((label, i) => {
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    btn.className = 'day-btn' + (i === todayIdx ? ' today-btn' : '') + (i === selectedDay ? ' active' : '');
+    btn.dataset.day = i;
+    btn.title = i === todayIdx ? 'Today' : '';
+    btn.addEventListener('click', () => {
+      selectedDay = i;
+      buildDayFilters();
+      render();
+    });
+    container.appendChild(btn);
+  });
+}
+
+function buildSideFilters() {
+  const container = document.getElementById('side-filters');
+  const sides = [
+    { key: 'all', label: 'All' },
+    { key: 'odd',  label: '⬡ Odd' },
+    { key: 'even', label: '⬢ Even' },
+  ];
+  container.innerHTML = '';
+  sides.forEach(s => {
+    const btn = document.createElement('button');
+    btn.textContent = s.label;
+    btn.className = 'side-btn' + (selectedSide === s.key ? ` active-${s.key}` : '');
+    btn.addEventListener('click', () => {
+      selectedSide = s.key;
+      buildSideFilters();
+      render();
+    });
+    container.appendChild(btn);
+  });
+}
+
+function render() {
+  const selectedDate = new Date(today);
+  // Shift the date to match selectedDay (within the current week)
+  const diff = selectedDay - today.getDay();
+  selectedDate.setDate(today.getDate() + diff);
+
+  // Filter streets
+  let filtered = allStreets.filter(row => isScheduledOnDate(row, selectedDate));
+  if (selectedSide === 'odd')  filtered = filtered.filter(r => r.side && r.side.toLowerCase() === 'odd');
+  if (selectedSide === 'even') filtered = filtered.filter(r => r.side && r.side.toLowerCase() === 'even');
+
+  // Sort by street name
+  filtered.sort((a, b) => a.st_name.localeCompare(b.st_name));
+
+  // Status
+  const dayName = DAY_LABELS[selectedDay];
+  const countEl = document.getElementById('status-count');
+  countEl.innerHTML = `<strong>${filtered.length}</strong> street${filtered.length !== 1 ? 's' : ''} cleaned on <strong>${dayName}</strong>`;
+
+  // Render cards
+  const content = document.getElementById('content');
+  if (filtered.length === 0) {
+    content.innerHTML = `
+      <div class="street-grid">
+        <div class="empty">No streets scheduled for ${dayName}${selectedSide !== 'all' ? ` (${selectedSide} side)` : ''}.</div>
+      </div>`;
+    return;
+  }
+
+  // Group by street name to merge odd+even rows
+  const byStreet = {};
+  filtered.forEach(row => {
+    const key = row.st_name;
+    if (!byStreet[key]) byStreet[key] = [];
+    byStreet[key].push(row);
+  });
+
+  const cards = Object.entries(byStreet).map(([name, rows]) => {
+    const sides = [...new Set(rows.map(r => r.side).filter(Boolean))];
+    const sideClass = sides.length > 1 ? 'both-side' : sides[0]?.toLowerCase() === 'odd' ? 'odd-side' : 'even-side';
+    const pillClass = sides.length > 1 ? 'pill-both' : sides[0]?.toLowerCase() === 'odd' ? 'pill-odd' : 'pill-even';
+    const sideLabel = sides.length > 1 ? 'Odd + Even' : sides[0] || '—';
+
+    // Use first row for time/segment (show both if different)
+    const timeStr = [...new Set(rows.map(r => `${formatTime(r.start_time)}–${formatTime(r.end_time)}`))].join(' / ');
+    const segStr  = [...new Set(rows.map(r => [r.from, r.to].filter(Boolean).join(' → ')))].join(' / ');
+    const freqStr = weekDescription(rows[0]);
+
+    return `
+      <div class="street-card ${sideClass}">
+        <div class="card-top">
+          <span class="street-name">${name}</span>
+          <span class="side-pill ${pillClass}">${sideLabel}</span>
+        </div>
+        <div class="card-detail">
+          ${timeStr ? `<div class="detail-row"><span class="detail-icon">🕐</span><span class="detail-text">${timeStr}</span></div>` : ''}
+          ${segStr  ? `<div class="detail-row"><span class="detail-icon">📍</span><span class="detail-text">${segStr}</span></div>` : ''}
+          ${freqStr ? `<span class="freq-chip">${freqStr}</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  content.innerHTML = `<div class="street-grid">${cards}</div>`;
+}
+
+// ── Data fetching ─────────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    // Step 1: get current CSV URL from CKAN
+    const metaRes = await fetch(CKAN_URL);
+    const meta    = await metaRes.json();
+    if (!meta.success) throw new Error('CKAN API error');
+
+    const csvUrl      = meta.result.url;
+    const lastUpdated = meta.result.last_modified?.slice(0, 10) || '—';
+    document.getElementById('last-updated').textContent = `Updated ${lastUpdated}`;
+
+    // Step 2: fetch and parse CSV
+    const csvRes  = await fetch(csvUrl);
+    const csvText = await csvRes.text();
+
+    const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+
+    // Step 3: filter to East Boston
+    allStreets = parsed.data.filter(r =>
+      r.dist_name && r.dist_name.trim().toLowerCase() === 'east boston'
+    );
+
+    if (allStreets.length === 0) throw new Error('No East Boston rows found');
+
+    render();
+
+  } catch (err) {
+    document.getElementById('content').innerHTML = `
+      <div class="state-msg">
+        <div class="big">⚠️</div>
+        Could not load schedule data.<br>
+        <small>${err.message}</small><br><br>
+        <small>Check the browser console or try refreshing.</small>
+      </div>`;
+    console.error(err);
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+(function init() {
+  // Header date
+  const dateStr = today.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+  document.getElementById('today-label').textContent = `Today is ${dateStr}`;
+
+  // Season badge
+  const badge = document.getElementById('season-badge');
+  if (isSeasonActive(today)) {
+    badge.textContent = '● Program active';
+    badge.className = 'season-badge season-active';
+  } else {
+    badge.textContent = '● Program inactive (Dec – Mar)';
+    badge.className = 'season-badge season-inactive';
+  }
+
+  buildDayFilters();
+  buildSideFilters();
+  loadData();
+})();
+</script>
+</body>
+</html>
