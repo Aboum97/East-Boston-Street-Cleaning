@@ -88,7 +88,31 @@
       align-items: center;
       flex-wrap: wrap;
     }
-    .filter-group { display: flex; gap: 4px; }
+
+    /* Week navigation */
+    .week-nav {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-right: 12px;
+    }
+    .week-nav-btn {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      padding: 5px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: transparent;
+      color: rgba(255,255,255,0.7);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .week-nav-btn:hover {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+    }
+
+    .filter-group { display: flex; gap: 4px; flex-wrap: wrap; }
     .filter-label {
       font-size: 0.7rem;
       font-family: 'DM Mono', monospace;
@@ -100,14 +124,19 @@
     }
     .day-btn, .side-btn {
       font-family: 'DM Mono', monospace;
-      font-size: 0.72rem;
-      padding: 5px 11px;
+      font-size: 0.68rem;
+      padding: 6px 10px;
       border-radius: 6px;
       border: 1px solid rgba(255,255,255,0.15);
       background: transparent;
       color: rgba(255,255,255,0.65);
       cursor: pointer;
       transition: all 0.15s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      line-height: 1.2;
     }
     .day-btn:hover, .side-btn:hover {
       background: rgba(255,255,255,0.1);
@@ -121,12 +150,27 @@
     }
     .day-btn.today-btn {
       border-color: var(--accent);
+      border-width: 2px;
       color: #ffb89a;
     }
     .day-btn.today-btn.active {
       background: var(--accent);
       color: #fff;
       border-color: var(--accent);
+    }
+    .day-date {
+      font-size: 0.65rem;
+      opacity: 0.75;
+    }
+    .today-badge {
+      font-size: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .day-btn.today-btn.active .today-badge {
+      color: #fff;
     }
     .side-btn.active-odd  { background: var(--odd);   color: #fff; border-color: var(--odd); }
     .side-btn.active-even { background: var(--even);  color: #fff; border-color: var(--even); }
@@ -185,12 +229,48 @@
       border-radius: 10px;
       padding: 14px 16px;
       border-left: 4px solid var(--border);
-      transition: box-shadow 0.15s;
+      transition: all 0.15s;
+      cursor: pointer;
+      position: relative;
     }
-    .street-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .street-card:hover {
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      transform: translateY(-1px);
+    }
     .street-card.odd-side  { border-left-color: var(--odd); }
     .street-card.even-side { border-left-color: var(--even); }
     .street-card.both-side { border-left-color: var(--navy); }
+
+    /* Today highlight */
+    .street-card.cleaning-today {
+      background: linear-gradient(to right, #fff9f5 0%, #ffffff 100%);
+      border: 2px solid var(--accent);
+      border-left: 4px solid var(--accent);
+    }
+    .street-card.cleaning-today.odd-side { border-left-color: var(--accent); }
+    .street-card.cleaning-today.even-side { border-left-color: var(--accent); }
+    .street-card.cleaning-today.both-side { border-left-color: var(--accent); }
+
+    .today-flag {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.55rem;
+      font-weight: 600;
+      font-family: 'DM Mono', monospace;
+      padding: 3px 8px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
 
     .card-top {
       display: flex;
@@ -205,6 +285,7 @@
       font-size: 0.92rem;
       color: var(--text);
       line-height: 1.3;
+      flex: 1;
     }
     .side-pill {
       font-family: 'DM Mono', monospace;
@@ -244,6 +325,34 @@
       display: inline-block;
     }
 
+    /* Expandable card details */
+    .card-expanded-details {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+      margin-top: 8px;
+      padding-top: 0;
+      border-top: 1px solid transparent;
+    }
+    .street-card.expanded .card-expanded-details {
+      max-height: 200px;
+      padding-top: 8px;
+      border-top-color: var(--border);
+    }
+    .expand-indicator {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 6px;
+      font-family: 'DM Mono', monospace;
+    }
+    .street-card.expanded .expand-indicator::before {
+      content: '▲ ';
+    }
+    .street-card:not(.expanded) .expand-indicator::before {
+      content: '▼ ';
+    }
+
     /* ── Empty state ── */
     .empty {
       grid-column: 1 / -1;
@@ -265,9 +374,11 @@
     }
     footer a { color: var(--muted); }
 
-    @media (max-width: 600px) {
+    @media (max-width: 768px) {
       .filters-inner { gap: 8px; }
+      .day-btn { font-size: 0.65rem; padding: 5px 8px; }
       .street-grid { grid-template-columns: 1fr; }
+      .week-nav { width: 100%; justify-content: space-between; }
     }
   </style>
 </head>
@@ -285,6 +396,10 @@
 
 <div class="filters-wrap">
   <div class="filters-inner">
+    <div class="week-nav">
+      <button class="week-nav-btn" id="prev-week">← Prev</button>
+      <button class="week-nav-btn" id="next-week">Next →</button>
+    </div>
     <span class="filter-label">Day</span>
     <div class="filter-group" id="day-filters"></div>
     <span class="filter-label" style="margin-left:8px">Side</span>
@@ -316,18 +431,20 @@
 
 <script>
 // ── Constants ──────────────────────────────────────────────────────────────
-// Data is pre-baked daily by GitHub Actions → no CORS issues, instant loads
 const DATA_URL   = './data/east-boston.json';
-
 const DAYS       = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
 const DAY_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAY_FULL   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS     = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MONTHS_ACTIVE = [4,5,6,7,8,9,10,11]; // April (4) – November (11)
 
 // ── State ──────────────────────────────────────────────────────────────────
 let allStreets   = [];
-let selectedDay  = new Date().getDay(); // 0=Sun
+let selectedDayIndex = 0; // Index in the 7-day view (0-6)
 let selectedSide = 'all';
+let weekOffset   = 0; // 0 = current week starting from today
 const today      = new Date();
+today.setHours(0, 0, 0, 0); // Normalize to start of day
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 function weekOfMonth(date) {
@@ -346,6 +463,25 @@ function formatTime(t) {
   return `${hour % 12 || 12}:${m} ${hour < 12 ? 'AM' : 'PM'}`;
 }
 
+function formatDate(date) {
+  const dayName = DAY_FULL[date.getDay()];
+  const month = MONTHS[date.getMonth()];
+  const day = date.getDate();
+  return `${dayName}, ${month} ${day}`;
+}
+
+function formatShortDate(date) {
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  return `${month}/${day}`;
+}
+
+function isSameDay(date1, date2) {
+  return date1.getFullYear() === date2.getFullYear() &&
+         date1.getMonth() === date2.getMonth() &&
+         date1.getDate() === date2.getDate();
+}
+
 function weekDescription(row) {
   const weeks = [1,2,3,4,5].filter(n => row[`week_${n}`] === 't').map(n => `wk ${n}`);
   if (weeks.length === 5 || row.every_day === 't') return 'every week';
@@ -360,25 +496,41 @@ function isScheduledOnDate(row, date) {
   return row[dayCol] === 't' && row[weekCol] === 't';
 }
 
+function getDayDate(dayIndex) {
+  const date = new Date(today);
+  date.setDate(today.getDate() + (weekOffset * 7) + dayIndex);
+  return date;
+}
+
 // ── Build UI ──────────────────────────────────────────────────────────────
 function buildDayFilters() {
   const container = document.getElementById('day-filters');
   container.innerHTML = '';
-  const todayIdx = today.getDay();
 
-  DAY_LABELS.forEach((label, i) => {
+  for (let i = 0; i < 7; i++) {
+    const date = getDayDate(i);
+    const dayName = DAY_LABELS[date.getDay()];
+    const shortDate = formatShortDate(date);
+    const isToday = isSameDay(date, today);
+
     const btn = document.createElement('button');
-    btn.textContent = label;
-    btn.className = 'day-btn' + (i === todayIdx ? ' today-btn' : '') + (i === selectedDay ? ' active' : '');
-    btn.dataset.day = i;
-    btn.title = i === todayIdx ? 'Today' : '';
+    btn.className = 'day-btn' +
+      (isToday ? ' today-btn' : '') +
+      (i === selectedDayIndex ? ' active' : '');
+
+    btn.innerHTML = `
+      <span class="day-name">${dayName}</span>
+      <span class="day-date">${shortDate}</span>
+      ${isToday ? '<span class="today-badge">Today</span>' : ''}
+    `;
+
     btn.addEventListener('click', () => {
-      selectedDay = i;
+      selectedDayIndex = i;
       buildDayFilters();
       render();
     });
     container.appendChild(btn);
-  });
+  }
 }
 
 function buildSideFilters() {
@@ -403,10 +555,8 @@ function buildSideFilters() {
 }
 
 function render() {
-  const selectedDate = new Date(today);
-  // Shift the date to match selectedDay (within the current week)
-  const diff = selectedDay - today.getDay();
-  selectedDate.setDate(today.getDate() + diff);
+  const selectedDate = getDayDate(selectedDayIndex);
+  const isToday = isSameDay(selectedDate, today);
 
   // Filter streets
   let filtered = allStreets.filter(row => isScheduledOnDate(row, selectedDate));
@@ -417,16 +567,16 @@ function render() {
   filtered.sort((a, b) => a.st_name.localeCompare(b.st_name));
 
   // Status
-  const dayName = DAY_LABELS[selectedDay];
+  const dateStr = formatDate(selectedDate);
   const countEl = document.getElementById('status-count');
-  countEl.innerHTML = `<strong>${filtered.length}</strong> street${filtered.length !== 1 ? 's' : ''} cleaned on <strong>${dayName}</strong>`;
+  countEl.innerHTML = `<strong>${filtered.length}</strong> street${filtered.length !== 1 ? 's' : ''} cleaned on <strong>${dateStr}</strong>`;
 
   // Render cards
   const content = document.getElementById('content');
   if (filtered.length === 0) {
     content.innerHTML = `
       <div class="street-grid">
-        <div class="empty">No streets scheduled for ${dayName}${selectedSide !== 'all' ? ` (${selectedSide} side)` : ''}.</div>
+        <div class="empty">No streets scheduled for ${dateStr}${selectedSide !== 'all' ? ` (${selectedSide} side)` : ''}.</div>
       </div>`;
     return;
   }
@@ -444,33 +594,68 @@ function render() {
     const sideClass = sides.length > 1 ? 'both-side' : sides[0]?.toLowerCase() === 'odd' ? 'odd-side' : 'even-side';
     const pillClass = sides.length > 1 ? 'pill-both' : sides[0]?.toLowerCase() === 'odd' ? 'pill-odd' : 'pill-even';
     const sideLabel = sides.length > 1 ? 'Odd + Even' : sides[0] || '—';
+    const todayClass = isToday ? ' cleaning-today' : '';
 
-    // Use first row for time/segment (show both if different)
+    // Collect all unique time ranges and segments
     const timeStr = [...new Set(rows.map(r => `${formatTime(r.start_time)}–${formatTime(r.end_time)}`))].join(' / ');
-    const segStr  = [...new Set(rows.map(r => [r.from, r.to].filter(Boolean).join(' → ')))].join(' / ');
+    const segments = rows.map(r => ({
+      from: r.from || '—',
+      to: r.to || '—',
+      side: r.side || '—'
+    }));
     const freqStr = weekDescription(rows[0]);
 
+    // Build expanded details
+    const expandedDetails = segments.map((seg, idx) => `
+      <div class="detail-row">
+        <span class="detail-icon">•</span>
+        <span class="detail-text">${seg.side} side: ${seg.from} → ${seg.to}</span>
+      </div>
+    `).join('');
+
+    const cardId = `card-${name.replace(/\s+/g, '-')}`;
+
     return `
-      <div class="street-card ${sideClass}">
+      <div class="street-card ${sideClass}${todayClass}" id="${cardId}" onclick="toggleCard('${cardId}')">
+        ${isToday ? '<div class="today-flag">🚨 Today</div>' : ''}
         <div class="card-top">
           <span class="street-name">${name}</span>
           <span class="side-pill ${pillClass}">${sideLabel}</span>
         </div>
         <div class="card-detail">
           ${timeStr ? `<div class="detail-row"><span class="detail-icon">🕐</span><span class="detail-text">${timeStr}</span></div>` : ''}
-          ${segStr  ? `<div class="detail-row"><span class="detail-icon">📍</span><span class="detail-text">${segStr}</span></div>` : ''}
           ${freqStr ? `<span class="freq-chip">${freqStr}</span>` : ''}
         </div>
+        <div class="card-expanded-details">
+          ${expandedDetails}
+        </div>
+        <div class="expand-indicator">Click for details</div>
       </div>`;
   }).join('');
 
   content.innerHTML = `<div class="street-grid">${cards}</div>`;
 }
 
+function toggleCard(cardId) {
+  const card = document.getElementById(cardId);
+  if (card) {
+    card.classList.toggle('expanded');
+  }
+}
+
+// ── Week Navigation ───────────────────────────────────────────────────────
+function navigateWeek(offset) {
+  weekOffset += offset;
+  buildDayFilters();
+  render();
+}
+
+document.getElementById('prev-week').addEventListener('click', () => navigateWeek(-1));
+document.getElementById('next-week').addEventListener('click', () => navigateWeek(1));
+
 // ── Data fetching ─────────────────────────────────────────────────────────
 async function loadData() {
   try {
-    // Data is pre-baked by GitHub Actions daily into data/east-boston.json
     const res  = await fetch(DATA_URL);
     if (!res.ok) throw new Error(`HTTP ${res.status} — data file not found. Run the GitHub Action first.`);
     const json = await res.json();
@@ -498,7 +683,7 @@ async function loadData() {
 // ── Init ──────────────────────────────────────────────────────────────────
 (function init() {
   // Header date
-  const dateStr = today.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+  const dateStr = today.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
   document.getElementById('today-label').textContent = `Today is ${dateStr}`;
 
   // Season badge

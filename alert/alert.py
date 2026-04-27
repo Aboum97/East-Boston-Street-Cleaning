@@ -7,16 +7,13 @@ Sends a Gmail alert listing streets being cleaned in the next 3 days.
 import os
 import smtplib
 import math
-import requests
-import csv
-import io
+import json
 from datetime import date, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 # ── Config ────────────────────────────────────────────────────────────────
-RESOURCE_ID   = "9fdbdcad-67c8-4b23-b6ec-861e77d56227"
-CKAN_URL      = f"https://data.boston.gov/api/3/action/resource_show?id={RESOURCE_ID}"
+DATA_FILE     = os.path.join(os.path.dirname(__file__), "..", "data", "east-boston.json")
 GMAIL_USER    = os.environ["GMAIL_USER"]
 GMAIL_PASS    = os.environ["GMAIL_APP_PASSWORD"]
 ALERT_EMAIL   = os.environ["ALERT_EMAIL"]
@@ -86,26 +83,13 @@ def week_description(row: dict) -> str:
     return f"weeks {', '.join(weeks)}" if weeks else ""
 
 
-# ── Data fetching ─────────────────────────────────────────────────────────
+# ── Data loading ──────────────────────────────────────────────────────────
 
-def fetch_east_boston_streets() -> list[dict]:
-    """Fetches the Boston street sweeping CSV and returns East Boston rows."""
-    # Step 1: get current CSV URL from CKAN (URL rotates on each update)
-    meta = requests.get(CKAN_URL, timeout=15).json()
-    if not meta.get("success"):
-        raise RuntimeError("CKAN API returned an error")
-    csv_url = meta["result"]["url"]
-
-    # Step 2: download CSV
-    resp = requests.get(csv_url, timeout=30)
-    resp.raise_for_status()
-
-    # Step 3: parse and filter to East Boston
-    reader = csv.DictReader(io.StringIO(resp.text))
-    return [
-        row for row in reader
-        if row.get("dist_name", "").strip().lower() == "east boston"
-    ]
+def load_east_boston_streets() -> list[dict]:
+    """Loads East Boston street data from local JSON file (updated daily by GitHub Actions)."""
+    with open(DATA_FILE, "r") as f:
+        data = json.load(f)
+    return data.get("streets", [])
 
 
 # ── Email builder ─────────────────────────────────────────────────────────
@@ -243,9 +227,9 @@ def main():
         print(f"Program inactive in month {today.month}. No alert sent.")
         return
 
-    print("Fetching East Boston street data…")
-    streets = fetch_east_boston_streets()
-    print(f"Found {len(streets)} East Boston street segments")
+    print("Loading East Boston street data from local file…")
+    streets = load_east_boston_streets()
+    print(f"Loaded {len(streets)} East Boston street segments")
 
     # Build schedule for next LOOKAHEAD days
     schedule: dict[date, list[dict]] = {}
